@@ -9,13 +9,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Build Debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
         with:
           name: Alphax-Debug-APK
           path: android/app/build/outputs/apk/debug/*.apk
