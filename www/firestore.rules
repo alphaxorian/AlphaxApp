@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin"; }
+    match /admins/{uid} { allow read: if signedIn() && request.auth.uid == uid; allow write: if false; }
+    match /licenses/{licenseId} { allow read, create, update, delete: if isAdmin(); }
+    match /payments/{paymentId} {
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == "Pending"
+        && request.resource.data.utr is string && request.resource.data.utr.size() >= 6 && request.resource.data.utr.size() <= 30
+        && request.resource.data.plan in ["Gold", "Diamond", "Prime"]
+        && (!("utr2" in request.resource.data) || (request.resource.data.utr2 is string && request.resource.data.utr2.size() >= 6 && request.resource.data.utr2.size() <= 30 && request.resource.data.utr2 != request.resource.data.utr))
+        && request.resource.data.amount is number
+        && request.resource.data.keys().hasOnly(["ownerUid", "utr", "utr2", "plan", "amount", "platform", "status", "createdAt", "updatedAt"]);
+      allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if false;
+    }
+    match /players/{playerId} { allow read, create, update, delete: if isAdmin(); }
+    match /utrReservations/{reservationId} { allow read, write: if false; }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
